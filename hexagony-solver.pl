@@ -260,6 +260,9 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
                 next;
             } elsif (! is_visible_from($black1_row, $black1_col, $green_row, $green_col)) {
                 next;
+            } elsif (is_visible_from($black1_row, $black1_col, 6, 8)) {
+                # Cannot be visible from green 1
+                next;
             }
             
             my @black1 = ($black1_row, $black1_col);
@@ -275,6 +278,9 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
                         next;
                     } elsif (! is_visible_from($black2_row, $black2_col, $green_row, $green_col)) {
                         next;
+                    } elsif (is_visible_from($black2_row, $black2_col, 6, 8)) {
+                        # Cannot be visible from green 1
+                        next;
                     }
 
                     # Skip to next row/col if collision
@@ -286,7 +292,7 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
                     push(@points, \@black2);
 
                     for(my $black3_row = 0; $black3_row <= 8; $black3_row++) {
-                        for(my $black3_col = ceiling($black2_row); $black3_col <= 8; $black3_col++) {
+                        for(my $black3_col = ceiling($black3_row); $black3_col <= 8; $black3_col++) {
 
                             # Early exit if this is an impossible spot for a black 19
                             if(get_empty_visibility($black3_row, $black3_col, @points) < 19) {
@@ -302,13 +308,16 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
                                 next;
                             } elsif (! is_visible_from($black3_row, $black3_col, $green_row, $green_col)) {
                                 next;
+                            } elsif (is_visible_from($black3_row, $black3_col, 6, 8)) {
+                                # Cannot be visible from green 1
+                                next;
                             }
 
                             my @black3 = ($black3_row, $black3_col);
                             push(@points, \@black3);
 
                             for(my $black4_row = 0; $black4_row <= 8; $black4_row++) {
-                                for(my $black4_col = ceiling($black2_row); $black4_col <= 8; $black4_col++) {
+                                for(my $black4_col = ceiling($black4_row); $black4_col <= 8; $black4_col++) {
 
                                     # Early exit if this is an impossible spot for a black 19
                                     if(get_empty_visibility($black4_row, $black4_col, @points) < 19) {
@@ -316,6 +325,9 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
                                     } elsif ($black4_row == $green_row && $black4_col == $green_col) {
                                         next;
                                     } elsif (! is_visible_from($black4_row, $black4_col, $green_row, $green_col)) {
+                                        next;
+                                    } elsif (is_visible_from($black4_row, $black4_col, 6, 8)) {
+                                        # Cannot be visible from green 1
                                         next;
                                     }
 
@@ -333,9 +345,9 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
 
 
                                     ### Whew! If we've gotten this far, then we have laid out a 
-                                    ### Green 130321, which is visible from four black 19s,
-                                    ### at least they were 19s or more when we last checked, so
-                                    ### we better check them again
+                                    ### Green 130321, which is visible from four black 19s.
+                                    ### Well, at least they were 19s or more when we last checked, so
+                                    ### we better check them again now that more hexes have been set
 
                                     my $good = 1;
                                     for(my $i = 1; $i < scalar(@points); $i++) {
@@ -390,4 +402,139 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
     pop(@points);
 }
 
+print "Candidates for placement of green 130,321 and four black 19s\n";
 print Dumper(\%candidates) , "\n\n";
+print "\n\n\n";
+
+
+@points = ();
+while(my ($green, $remainder) = each %candidates) {
+    my @green_point = split(/,/, $green);
+    push(@points, \@green_point);
+
+    while(my ($black1, $remainder2) = each %{$remainder}) {
+        my @black1_point = split(/,/, $black1);
+        push(@points, \@black1_point);
+
+        while(my ($black2, $remainder3) = each %{$remainder2}) {
+            my @black2_point = split(/,/, $black2);
+            push(@points, \@black2_point);
+
+            while(my ($black3, $remainder4) = each %{$remainder3}) {
+                my @black3_point = split(/,/, $black3);
+                push(@points, \@black3_point);
+
+                while(my ($black4, $nothing) = each %{$remainder4}) {
+                    my @black4_point = split(/,/, $black4);
+                    push(@points, \@black4_point);
+
+                    
+                    # For this Candidate set of 1 green and 4 black points
+                    # try to find a spot for a blue 169 visible from the red 169
+                    for(my $blue_row = 0; $blue_row <= 8; $blue_row++) {
+                        for(my $blue_col = ceiling($blue_row); $blue_col <= 8; $blue_col++) {
+
+                            if(is_occupied($blue_row, $blue_col, @points)) {
+                                next;
+                            } elsif (! is_visible_from($blue_row, $blue_col, 0, 6)) {
+                                # If not visible to red 169, then skip
+                                next;
+                            } elsif(is_visible_from($blue_row, $blue_col, $green_point[0], $green_point[1])) {
+                                # Cannot see the green 130,321 or this blue is set to that high value, instead of 169
+                                next;
+                            } elsif($blue_row == 0 && $blue_col == 6) {
+                                # This is occupied by a red 169
+                                next;
+                            }
+
+                            my @blue_point = ($blue_row, $blue_col);
+                            push(@points, \@blue_point);
+
+                            # Now check that this placement doesn't ruin our 19s
+                            my $good = 1;
+                            for(my $i = 1; $i < scalar(@points) - 1; $i++) {
+                                my @point = @{$points[$i]};
+                                my $visible_count = get_empty_visibility($point[0], $point[1], @points);
+
+                                # print "$i : $visible_count\n";
+
+                                if($visible_count < 19) {
+                                    $good = 0;
+                                    last;
+                                }
+                            }
+
+                            if($good) {
+                                # Okay! If the previous constraints are still met,
+                                # then we need to place a green number visible from this blue
+                                # number, but not visible from the black 19s
+                                for(my $green2_row = 0; $green2_row <= 8; $green2_row++) {
+                                    for(my $green2_col = ceiling($green2_row); $green2_col <= 8; $green2_col++) {
+
+                                        if(is_occupied($green2_row, $green2_col, @points)) {
+                                            next;
+                                        } elsif (! is_visible_from($green2_row, $green2_col, $blue_row, $blue_col)) {
+                                            # If not visible to blue 169, then skip
+                                            next;
+                                        } elsif (is_visible_from($green2_row, $green2_col, $black1_point[0], $black1_point[1])) {
+                                            # Should not be visible to any existing black
+                                            next;
+                                        } elsif (is_visible_from($green2_row, $green2_col, $black2_point[0], $black2_point[1])) {
+                                            # Should not be visible to any existing black
+                                            next;
+                                        } elsif (is_visible_from($green2_row, $green2_col, $black3_point[0], $black3_point[1])) {
+                                            # Should not be visible to any existing black
+                                            next;
+                                        } elsif (is_visible_from($green2_row, $green2_col, $black4_point[0], $black4_point[1])) {
+                                            # Should not be visible to any existing black
+                                            next;
+                                        } elsif($green2_row == 0 && $green2_col == 6) {
+                                            # This is occupied by a red 169
+                                            next;
+                                        }
+
+                                        my @green2_point = ($green2_row, $green2_col);
+                                        push(@points, \@green2_point);
+
+                                        # Now check that this placement doesn't ruin our 19s
+                                        my $good = 1;
+                                        for(my $i = 1; $i < scalar(@points) - 1; $i++) {
+                                            my @point = @{$points[$i]};
+                                            my $visible_count = get_empty_visibility($point[0], $point[1], @points);
+
+                                            # print "$i : $visible_count\n";
+
+                                            if($visible_count < 19) {
+                                                $good = 0;
+                                                last;
+                                            }
+                                        }
+
+                                        print Dumper(\@points);
+                                        print "\n";
+
+                                        pop(@points);
+                                    }
+                                }
+                            }
+
+                            pop(@points);
+                        }
+                    }
+
+                    
+
+                    pop(@points);
+                }
+
+                pop(@points);
+            }
+
+            pop(@points);
+        }
+
+        pop(@points);
+    }
+
+    pop(@points);
+}
