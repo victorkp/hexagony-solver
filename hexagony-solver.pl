@@ -95,11 +95,14 @@ sub get_empty_visibility($$@) {
     my ($i, $j, @points) = @_;
 
     # Start with visible hexes of same column
-    my $visible = 8 - ceiling($i);
+    my $visible = 0;
 
-    # Eliminate blue 130321 and green 1 from column counts if needed
-    if($i == 4 || $i == 6) {
-        $visible--;
+    for(my $j2 = 8; $j2 >= ceiling($i); $j2--) {
+        if($j2 == $j) {
+            next;
+        } elsif (! is_occupied($i, $j2)) {
+            $visible++;
+        }
     }
 
     # Upper Right View
@@ -158,6 +161,10 @@ sub get_empty_visibility($$@) {
 #  Arugments: column1, row1, column2, row2
 sub is_visible_from($$$$) {
     my ($i, $j, $i_target, $j_target) = @_;
+
+    if($i == $i_target) {
+        return 1;
+    }
 
     # Upper Right View
     my $i2 = $i + 1;
@@ -232,8 +239,10 @@ sub in_bound($$) {
 # 
 # print Dumper(\@visibility);
 
+
 # Points array that expands/shrinks as we add and remove candidates
 my @points;
+my %candidates;
 
 # Try green 130321 in center column first, that seems most likely
 my $green_row = 4;
@@ -342,9 +351,19 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
                                     }
 
                                     if($good) {
-                                        print "CANDIDATE:\n";
-                                        print Dumper(\@points);
-                                        print "\n\n";
+                                        my $green = $points[0];
+                                        my @green = @{$green};
+                                        my $key = $green[0] . "," . $green[1];
+
+                                        my @keys;
+                                        for(my $i = 1; $i < scalar(@points); $i++) {
+                                            my @point = @{$points[$i]};
+                                            push(@keys, $point[0] . "," . $point[1]);
+                                        }
+
+                                        @keys = sort { $a cmp $b } @keys;
+
+                                        $candidates{$key}{$keys[0]}{$keys[1]}{$keys[2]}{$keys[3]} = 1;
                                     }
 
                                     # Remove this black point (4)
@@ -370,3 +389,5 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
     # Remove this green point (1)
     pop(@points);
 }
+
+print Dumper(\%candidates) , "\n\n";
