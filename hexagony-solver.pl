@@ -100,7 +100,7 @@ sub get_empty_visibility($$@) {
     for(my $j2 = 8; $j2 >= ceiling($i); $j2--) {
         if($j2 == $j) {
             next;
-        } elsif (! is_occupied($i, $j2)) {
+        } elsif (! is_occupied($i, $j2, @points)) {
             $visible++;
         }
     }
