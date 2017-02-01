@@ -621,8 +621,6 @@ while(my ($green, $remainder) = each %candidates) {
                                                                 }
 
                                                                 if($good) {
-                                                                    print Dumper(\@points), "\n";
-
                                                                     my @blacks;
                                                                     push(@blacks, $black5_row . "," . $black5_col);
                                                                     push(@blacks, $black6_row . "," . $black6_col);
