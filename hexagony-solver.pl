@@ -13,7 +13,7 @@ use Data::Dumper;
 
 my @NONE;
 
-my $SECONDARY_BLACK_MIN = 10;
+my $SECONDARY_BLACK_MIN = 13;
 
 # For a given column, get the starting index of the row
 sub ceiling($) {
@@ -80,7 +80,7 @@ sub row_right_down($$) {
 sub row_left_down($$) {
     my ($i, $j) = @_;
 
-    if($i < 4) {
+    if($i <= 4) {
         return $j + 1;
     } else {
         return $j;
@@ -90,7 +90,7 @@ sub row_left_down($$) {
 sub row_left_up($$) {
     my ($i, $j) = @_;
 
-    if($i < 4) {
+    if($i <= 4) {
         return $j;
     } else {
         return $j - 1;
@@ -122,8 +122,8 @@ sub get_empty_visibility($$@) {
             $visible++;
         }
 
-        $i2++;
         $j2 = row_right_up($i2, $j2);
+        $i2++;
     }
 
     # Lower Right View
@@ -134,8 +134,8 @@ sub get_empty_visibility($$@) {
             $visible++;
         }
 
-        $i2++;
         $j2 = row_right_down($i2, $j2);
+        $i2++;
     }
 
     # Upper Left View
@@ -146,8 +146,8 @@ sub get_empty_visibility($$@) {
             $visible++;
         }
 
-        $i2--;
         $j2 = row_left_up($i2, $j2);
+        $i2--;
     }
 
     # Lower Left View
@@ -158,8 +158,8 @@ sub get_empty_visibility($$@) {
             $visible++;
         }
 
-        $i2--;
         $j2 = row_left_down($i2, $j2);
+        $i2--;
     }
 
     return $visible;
@@ -183,8 +183,8 @@ sub is_visible_from($$$$) {
             return 1;
         }
 
-        $i2++;
         $j2 = row_right_up($i2, $j2);
+        $i2++;
     }
 
     # Lower Right View
@@ -195,8 +195,8 @@ sub is_visible_from($$$$) {
             return 1;
         }
 
-        $i2++;
         $j2 = row_right_down($i2, $j2);
+        $i2++;
     }
 
     # Upper Left View
@@ -207,8 +207,8 @@ sub is_visible_from($$$$) {
             return 1;
         }
 
-        $i2--;
         $j2 = row_left_up($i2, $j2);
+        $i2--;
     }
 
     # Lower Left View
@@ -219,8 +219,8 @@ sub is_visible_from($$$$) {
             return 1;
         }
 
-        $i2--;
         $j2 = row_left_down($i2, $j2);
+        $i2--;
     }
 
     return 0;
