@@ -4,7 +4,16 @@ use strict;
 use warnings;
 use Data::Dumper;
 
+#####
+### Foreword: yes, towards the end, this code gets messy.
+### That seems to be a natural part of writing a constraint
+### solver in an ad-hoc fashion in very little time.
+### WARNING: tons of copy/paste below
+#####
+
 my @NONE;
+
+my $SECONDARY_BLACK_MIN = 10;
 
 # For a given column, get the starting index of the row
 sub ceiling($) {
@@ -51,7 +60,7 @@ sub is_occupied($$@) {
 sub row_right_up($$) {
     my ($i, $j) = @_;
 
-    if($i <= 4) {
+    if($i < 4) {
         return $j - 1;
     } else {
         return $j;
@@ -61,7 +70,7 @@ sub row_right_up($$) {
 sub row_right_down($$) {
     my ($i, $j) = @_;
 
-    if($i <= 4) {
+    if($i < 4) {
         return $j;
     } else {
         return $j + 1;
@@ -402,10 +411,12 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
     pop(@points);
 }
 
-print "Candidates for placement of green 130,321 and four black 19s\n";
-print Dumper(\%candidates) , "\n\n";
-print "\n\n\n";
+# print "Candidates for placement of green 130,321 and four black 19s\n";
+# print Dumper(\%candidates) , "\n\n";
+# print "\n\n\n";
 
+
+my %final_candidates;
 
 @points = ();
 while(my ($green, $remainder) = each %candidates) {
@@ -491,6 +502,12 @@ while(my ($green, $remainder) = each %candidates) {
                                         } elsif($green2_row == 0 && $green2_col == 6) {
                                             # This is occupied by a red 169
                                             next;
+                                        } elsif($green2_row == 8 && $green2_col == 6) {
+                                            # This is occupied by a red 0
+                                            next;
+                                        } elsif($green2_row == 2 && $green2_col == 8) {
+                                            # This is occupied by a red 0
+                                            next;
                                         }
 
                                         my @green2_point = ($green2_row, $green2_col);
@@ -498,11 +515,9 @@ while(my ($green, $remainder) = each %candidates) {
 
                                         # Now check that this placement doesn't ruin our 19s
                                         my $good = 1;
-                                        for(my $i = 1; $i < scalar(@points) - 1; $i++) {
+                                        for(my $i = 1; $i < scalar(@points) - 2; $i++) {
                                             my @point = @{$points[$i]};
                                             my $visible_count = get_empty_visibility($point[0], $point[1], @points);
-
-                                            # print "$i : $visible_count\n";
 
                                             if($visible_count < 19) {
                                                 $good = 0;
@@ -510,8 +525,122 @@ while(my ($green, $remainder) = each %candidates) {
                                             }
                                         }
 
-                                        print Dumper(\@points);
-                                        print "\n";
+                                        if($good) {
+                                            for(my $black5_row = 0; $black5_row <= 8; $black5_row++) {
+                                                for(my $black5_col = ceiling($black5_row); $black5_col <= 8; $black5_col++) {
+
+                                                    if(is_occupied($black5_row, $black5_col, @points)) {
+                                                        next;
+                                                    } elsif (! is_visible_from($black5_row, $black5_col, $green2_row, $green2_col)) {
+                                                        # If not visible to blue 169, then skip
+                                                        next;
+                                                    } elsif (is_visible_from($black5_row, $black5_col, $green_point[0], $green_point[0])) {
+                                                        # If is visible to green 130,321 then this won't work
+                                                        next;
+                                                    } elsif($black5_row == 0 && $black5_col == 6) {
+                                                        # This is occupied by a red 169
+                                                        next;
+                                                    } elsif($black5_row == 8 && $black5_col == 6) {
+                                                        # This is occupied by a red 0
+                                                        next;
+                                                    } elsif($black5_row == 2 && $black5_col == 8) {
+                                                        # This is occupied by a red 0
+                                                        next;
+                                                    } elsif(get_empty_visibility($black5_row, $black5_col, @points) < $SECONDARY_BLACK_MIN) {
+                                                        # Need to be at least 13 to be useful
+                                                        next;
+                                                    }
+
+                                                    my @black5_point = ($black5_row, $black5_col);
+                                                    push(@points, \@black5_point);
+
+                                                    # Now check that this placement doesn't ruin our 19s
+                                                    my $good = 1;
+                                                    for(my $i = 1; $i < scalar(@points) - 3; $i++) {
+                                                        my @point = @{$points[$i]};
+                                                        my $visible_count = get_empty_visibility($point[0], $point[1], @points);
+
+                                                        if($visible_count < 19) {
+                                                            $good = 0;
+                                                            last;
+                                                        }
+                                                    }
+
+                                                    if($good) {
+                                                        for(my $black6_row = 0; $black6_row <= 8; $black6_row++) {
+                                                            for(my $black6_col = ceiling($black6_row); $black6_col <= 8; $black6_col++) {
+
+                                                                if(is_occupied($black6_row, $black6_col, @points)) {
+                                                                    next;
+                                                                } elsif (! is_visible_from($black6_row, $black6_col, $green2_row, $green2_col)) {
+                                                                    # If not visible to green 169, then skip
+                                                                    next;
+                                                                } elsif (is_visible_from($black6_row, $black6_col, $green_point[0], $green_point[0])) {
+                                                                    # If is visible to green 130,321 then this won't work
+                                                                    next;
+                                                                } elsif($black6_row == 0 && $black6_col == 6) {
+                                                                    # This is occupied by a red 169
+                                                                    next;
+                                                                } elsif($black6_row == 8 && $black6_col == 6) {
+                                                                    # This is occupied by a red 0
+                                                                    next;
+                                                                } elsif($black6_row == 2 && $black6_col == 8) {
+                                                                    # This is occupied by a red 0
+                                                                    next;
+                                                                } elsif(get_empty_visibility($black6_row, $black6_col, @points) < $SECONDARY_BLACK_MIN) {
+                                                                    # Need to be at least 13 to be useful
+                                                                    # next;
+                                                                }
+
+                                                                my @black6_point = ($black6_row, $black6_col);
+                                                                push(@points, \@black6_point);
+
+                                                                # Now check that this placement doesn't ruin our 19s
+                                                                my $good = 1;
+                                                                for(my $i = 1; $i < scalar(@points); $i++) {
+                                                                    # Skip the blue and green2
+                                                                    if($i == 5) {
+                                                                        $i = 6;
+                                                                        next;
+                                                                    }
+
+                                                                    my @point = @{$points[$i]};
+                                                                    my $visible_count = get_empty_visibility($point[0], $point[1], @points);
+
+                                                                    if($i < 5) {
+                                                                        if($visible_count < 19) {
+                                                                            $good = 0;
+                                                                            last;
+                                                                        }
+                                                                    } else {
+                                                                        if($visible_count < $SECONDARY_BLACK_MIN) {
+                                                                            $good = 0;
+                                                                            last;
+                                                                        }
+                                                                    }
+                                                                }
+
+                                                                if($good) {
+                                                                    print Dumper(\@points), "\n";
+
+                                                                    my @blacks;
+                                                                    push(@blacks, $black5_row . "," . $black5_col);
+                                                                    push(@blacks, $black6_row . "," . $black6_col);
+                                                                    @blacks = sort { $a cmp $b } @blacks;
+
+                                                                    $final_candidates{$green}{$black1}{$black2}{$black3}{$black4}{"$blue_row,$blue_col"}{"$green2_row,$green2_col"}{$blacks[0]}{$blacks[1]} = 1;
+
+                                                                }
+
+                                                                pop(@points);
+                                                            }
+                                                        }
+                                                    }
+
+                                                    pop(@points);
+                                                }
+                                            }
+                                        }
 
                                         pop(@points);
                                     }
@@ -521,8 +650,6 @@ while(my ($green, $remainder) = each %candidates) {
                             pop(@points);
                         }
                     }
-
-                    
 
                     pop(@points);
                 }
@@ -538,3 +665,8 @@ while(my ($green, $remainder) = each %candidates) {
 
     pop(@points);
 }
+
+print "Key ordering: green 130321, black 19, black 19, black 19, black 19, blue 169, green 169, black 13, black 13\n";
+print "Assume all other hexes are RED.\n";
+print Dumper(\%final_candidates);
+
