@@ -15,7 +15,7 @@ The script makes a number of assumptions about the solution, which seemed reason
 ![Coordinate Layout](images/hexagony-coords.png)
 
 
-## Constraints Solved In Order
+## Constraints Solved, In Order
 1. Green 130,321
     * Is in the middle column
 2. Black 19s
