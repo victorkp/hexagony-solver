@@ -1,10 +1,9 @@
 # Hex-Agony 2 Solver #
-## Intro ## 
 
 This is a short Perl program built to solve Jane Street's January 2017 puzzle, [Hex-agony #2](https://www.janestreet.com/puzzles/hex-agony-2/).
 
 
-## Operating Assumptions ##
+## Operating Assumptions
 The script makes a number of assumptions about the solution, which seemed reasonable after fiddling with the problem by hand. These assumptions greatly reduced the search space, and so you may observe that the script finds the correct solution in ~1 second on ageing hardware.
 
 1. There is a green 130,321 in the middle column
@@ -16,7 +15,7 @@ The script makes a number of assumptions about the solution, which seemed reason
 ![Coordinate Layout](images/hexagony-coords.png)
 
 
-## Constraints Solved In Order ##
+## Constraints Solved In Order
 1. Green 130,321
     * Is in the middle column
 2. Black 19s
@@ -36,7 +35,7 @@ The script makes a number of assumptions about the solution, which seemed reason
     * Can see >= 13 empty spaces
     * Not obstructing any of the black 19s from seeing >= 19 empty spaces
 
-## Solution ## 
+## Solution
 Solving these constraints results in this output from the Perl script:
 
 ![Constraints Solved](images/hexagony-constraint.png)
