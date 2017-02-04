@@ -13,6 +13,13 @@ use Data::Dumper;
 
 my @NONE;
 
+# Red points originally placed on the puzzle
+my @RED_169 = (0, 6);
+my @RED_0_1 = (8, 6);
+my @RED_0_2 = (2, 8);
+my @RED_POINTS = (\@RED_169, \@RED_0_1, \@RED_0_2);
+
+my $PRIMARY_BLACK_MIN   = 19;
 my $SECONDARY_BLACK_MIN = 13;
 
 # For a given column, get the starting index of the row
@@ -50,8 +57,6 @@ sub is_occupied($$@) {
 
     return 0;
 }
-
-
 
 ### The following four functions help in get_empty_visibility
 # Arguments: column, row
@@ -226,6 +231,7 @@ sub is_visible_from($$$$) {
     return 0;
 
 }
+
 ## Determines if a point is in bounds of the game
 #  Arguments: column, row
 sub in_bound($$) {
@@ -238,15 +244,70 @@ sub in_bound($$) {
     return 1;
 }
 
-# # Precompute how many hexes are visible from each hex
-# my @visibility = ();
-# for(my $i = 0; $i < 9; $i++) {
-#     for(my $j = ceiling($i); $j < 9; $j++) {
-#         push(@{$visibility[$i]}, get_empty_visibility($i, $j, @NONE));
-#     }
-# }
-# 
-# print Dumper(\@visibility);
+
+### Check conditions for a specific point,
+### specifically how many empty (red) hexes are visible,
+### if specific points are visible, and if specific points
+### are not visible.
+#   Arguments: column, row, min empty hexes seen,
+#              array ref of points that are occupied by non-red,
+#              array ref of points that should be seen,
+#              array ref of points that shouldn't be seen
+sub check_rules($$$$$$) {
+    my ($i, $j, $min_visibility, $points, $should_see, $shouldnt_see) = @_;
+
+    if($min_visibility > 0 && get_empty_visibility($i, $j, @{$points}) < $min_visibility) {
+        return 0;
+    }
+
+    for my $point (@{$should_see}) {
+        my @point = @{$point};
+        if(! is_visible_from($i, $j, $point[0], $point[1])) {
+            return 0;
+        }
+    }
+
+    for my $point (@{$shouldnt_see}) {
+        my @point = @{$point};
+        if(is_visible_from($i, $j, $point[0], $point[1])) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+### See the @points array below, which is in order of
+### green 130321, black 19, black 19, black 19, black 19,
+### blue 169, green 169, black 13, black 13
+### and make sure that the black points see enough blank hexes
+### that we will be filling in as red in our final solution
+sub check_points_visibility(@) {
+    my (@points) = @_;
+
+    for(my $i = 1; $i < scalar(@points); $i++) {
+        # Skip the blue and green2
+        if($i == 5) {
+            $i = 6;
+            next;
+        }
+
+        my @point = @{$points[$i]};
+        my $visible_count = get_empty_visibility($point[0], $point[1], @points);
+
+        if($i < 5) {
+            if($visible_count < 19) {
+                return 0;
+            }
+        } else {
+            if($visible_count < $SECONDARY_BLACK_MIN) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
 
 
 # Points array that expands/shrinks as we add and remove candidates
@@ -411,10 +472,6 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
     pop(@points);
 }
 
-# print "Candidates for placement of green 130,321 and four black 19s\n";
-# print Dumper(\%candidates) , "\n\n";
-# print "\n\n\n";
-
 
 my %final_candidates;
 
@@ -445,182 +502,107 @@ while(my ($green, $remainder) = each %candidates) {
                     for(my $blue_row = 0; $blue_row <= 8; $blue_row++) {
                         for(my $blue_col = ceiling($blue_row); $blue_col <= 8; $blue_col++) {
 
-                            if(is_occupied($blue_row, $blue_col, @points)) {
+                            my @occupied_points;
+                            push(@occupied_points, @points);
+                            push(@occupied_points, @RED_POINTS);
+
+                            if(is_occupied($blue_row, $blue_col, @occupied_points)) {
                                 next;
-                            } elsif (! is_visible_from($blue_row, $blue_col, 0, 6)) {
-                                # If not visible to red 169, then skip
-                                next;
-                            } elsif(is_visible_from($blue_row, $blue_col, $green_point[0], $green_point[1])) {
-                                # Cannot see the green 130,321 or this blue is set to that high value, instead of 169
-                                next;
-                            } elsif($blue_row == 0 && $blue_col == 6) {
-                                # This is occupied by a red 169
+                            }
+
+                            # If not visible to red 169, then skip
+                            my @should_see = (\@RED_169);
+
+                            # If is visible to green 130,321 then this won't work
+                            my @shouldnt_see = (\@green_point);
+
+                            if(! check_rules($blue_row, $blue_col, 0, \@points, \@should_see, \@shouldnt_see)) {
                                 next;
                             }
 
                             my @blue_point = ($blue_row, $blue_col);
                             push(@points, \@blue_point);
 
-                            # Now check that this placement doesn't ruin our 19s
-                            my $good = 1;
-                            for(my $i = 1; $i < scalar(@points) - 1; $i++) {
-                                my @point = @{$points[$i]};
-                                my $visible_count = get_empty_visibility($point[0], $point[1], @points);
-
-                                # print "$i : $visible_count\n";
-
-                                if($visible_count < 19) {
-                                    $good = 0;
-                                    last;
-                                }
-                            }
-
-                            if($good) {
+                            if(check_points_visibility(@points)) {
                                 # Okay! If the previous constraints are still met,
                                 # then we need to place a green number visible from this blue
                                 # number, but not visible from the black 19s
                                 for(my $green2_row = 0; $green2_row <= 8; $green2_row++) {
                                     for(my $green2_col = ceiling($green2_row); $green2_col <= 8; $green2_col++) {
 
-                                        if(is_occupied($green2_row, $green2_col, @points)) {
-                                            next;
-                                        } elsif (! is_visible_from($green2_row, $green2_col, $blue_row, $blue_col)) {
-                                            # If not visible to blue 169, then skip
-                                            next;
-                                        } elsif (is_visible_from($green2_row, $green2_col, $black1_point[0], $black1_point[1])) {
-                                            # Should not be visible to any existing black
-                                            next;
-                                        } elsif (is_visible_from($green2_row, $green2_col, $black2_point[0], $black2_point[1])) {
-                                            # Should not be visible to any existing black
-                                            next;
-                                        } elsif (is_visible_from($green2_row, $green2_col, $black3_point[0], $black3_point[1])) {
-                                            # Should not be visible to any existing black
-                                            next;
-                                        } elsif (is_visible_from($green2_row, $green2_col, $black4_point[0], $black4_point[1])) {
-                                            # Should not be visible to any existing black
-                                            next;
-                                        } elsif($green2_row == 0 && $green2_col == 6) {
-                                            # This is occupied by a red 169
-                                            next;
-                                        } elsif($green2_row == 8 && $green2_col == 6) {
-                                            # This is occupied by a red 0
-                                            next;
-                                        } elsif($green2_row == 2 && $green2_col == 8) {
-                                            # This is occupied by a red 0
+                                        my @occupied_points;
+                                        push(@occupied_points, @points);
+                                        push(@occupied_points, @RED_POINTS);
+
+                                        if(is_occupied($green2_row, $green2_col, @occupied_points)) {
                                             next;
                                         }
+
+                                        # If not visible to blue 169, then skip
+                                        my @should_see = ([$blue_row, $blue_col]);
+
+                                        # If is visible to any of the black 19s, then won't get to 169 product
+                                        my @shouldnt_see = (\@black1_point, \@black2_point, \@black3_point, \@black4_point);
+
+                                        if(! check_rules($blue_row, $blue_col, 0, \@points, \@should_see, \@shouldnt_see)) {
+                                            next;
+                                        }
+
 
                                         my @green2_point = ($green2_row, $green2_col);
                                         push(@points, \@green2_point);
 
-                                        # Now check that this placement doesn't ruin our 19s
-                                        my $good = 1;
-                                        for(my $i = 1; $i < scalar(@points) - 2; $i++) {
-                                            my @point = @{$points[$i]};
-                                            my $visible_count = get_empty_visibility($point[0], $point[1], @points);
-
-                                            if($visible_count < 19) {
-                                                $good = 0;
-                                                last;
-                                            }
-                                        }
-
-                                        if($good) {
+                                        if(check_points_visibility(@points)) {
                                             for(my $black5_row = 0; $black5_row <= 8; $black5_row++) {
                                                 for(my $black5_col = ceiling($black5_row); $black5_col <= 8; $black5_col++) {
 
-                                                    if(is_occupied($black5_row, $black5_col, @points)) {
+                                                    my @occupied_points;
+                                                    push(@occupied_points, @points);
+                                                    push(@occupied_points, @RED_POINTS);
+
+                                                    if(is_occupied($black5_row, $black5_col, @occupied_points)) {
                                                         next;
-                                                    } elsif (! is_visible_from($black5_row, $black5_col, $green2_row, $green2_col)) {
-                                                        # If not visible to blue 169, then skip
-                                                        next;
-                                                    } elsif (is_visible_from($black5_row, $black5_col, $green_point[0], $green_point[0])) {
-                                                        # If is visible to green 130,321 then this won't work
-                                                        next;
-                                                    } elsif($black5_row == 0 && $black5_col == 6) {
-                                                        # This is occupied by a red 169
-                                                        next;
-                                                    } elsif($black5_row == 8 && $black5_col == 6) {
-                                                        # This is occupied by a red 0
-                                                        next;
-                                                    } elsif($black5_row == 2 && $black5_col == 8) {
-                                                        # This is occupied by a red 0
-                                                        next;
-                                                    } elsif(get_empty_visibility($black5_row, $black5_col, @points) < $SECONDARY_BLACK_MIN) {
-                                                        # Need to be at least 13 to be useful
+                                                    }
+
+                                                    # If not visible to green 169, then skip
+                                                    my @should_see = ([$green2_row, $green2_col]);
+
+                                                    # If is visible to green 130,321 then this won't work
+                                                    my @shouldnt_see = (\@green_point);
+
+                                                    if(! check_rules($black5_row, $black5_col, $SECONDARY_BLACK_MIN, \@points, \@should_see, \@shouldnt_see)) {
                                                         next;
                                                     }
 
                                                     my @black5_point = ($black5_row, $black5_col);
                                                     push(@points, \@black5_point);
 
-                                                    # Now check that this placement doesn't ruin our 19s
-                                                    my $good = 1;
-                                                    for(my $i = 1; $i < scalar(@points) - 3; $i++) {
-                                                        my @point = @{$points[$i]};
-                                                        my $visible_count = get_empty_visibility($point[0], $point[1], @points);
-
-                                                        if($visible_count < 19) {
-                                                            $good = 0;
-                                                            last;
-                                                        }
-                                                    }
-
-                                                    if($good) {
+                                                    if(check_points_visibility(@points)) {
                                                         for(my $black6_row = 0; $black6_row <= 8; $black6_row++) {
                                                             for(my $black6_col = ceiling($black6_row); $black6_col <= 8; $black6_col++) {
 
-                                                                if(is_occupied($black6_row, $black6_col, @points)) {
+                                                                my @occupied_points;
+                                                                push(@occupied_points, @points);
+                                                                push(@occupied_points, @RED_POINTS);
+
+                                                                if(is_occupied($black6_row, $black6_col, @occupied_points)) {
                                                                     next;
-                                                                } elsif (! is_visible_from($black6_row, $black6_col, $green2_row, $green2_col)) {
-                                                                    # If not visible to green 169, then skip
-                                                                    next;
-                                                                } elsif (is_visible_from($black6_row, $black6_col, $green_point[0], $green_point[0])) {
-                                                                    # If is visible to green 130,321 then this won't work
-                                                                    next;
-                                                                } elsif($black6_row == 0 && $black6_col == 6) {
-                                                                    # This is occupied by a red 169
-                                                                    next;
-                                                                } elsif($black6_row == 8 && $black6_col == 6) {
-                                                                    # This is occupied by a red 0
-                                                                    next;
-                                                                } elsif($black6_row == 2 && $black6_col == 8) {
-                                                                    # This is occupied by a red 0
-                                                                    next;
-                                                                } elsif(get_empty_visibility($black6_row, $black6_col, @points) < $SECONDARY_BLACK_MIN) {
-                                                                    # Need to be at least 13 to be useful
-                                                                    # next;
                                                                 }
 
+                                                                # If not visible to green 169, then skip
+                                                                my @should_see = ([$green2_row, $green2_col]);
+
+                                                                # If is visible to green 130,321 then this won't work
+                                                                my @shouldnt_see = (\@green_point);
+
+                                                                if(! check_rules($black6_row, $black6_col, $SECONDARY_BLACK_MIN, \@points, \@should_see, \@shouldnt_see)) {
+                                                                    next;
+                                                                }
+                                                               
                                                                 my @black6_point = ($black6_row, $black6_col);
                                                                 push(@points, \@black6_point);
 
-                                                                # Now check that this placement doesn't ruin our 19s
-                                                                my $good = 1;
-                                                                for(my $i = 1; $i < scalar(@points); $i++) {
-                                                                    # Skip the blue and green2
-                                                                    if($i == 5) {
-                                                                        $i = 6;
-                                                                        next;
-                                                                    }
-
-                                                                    my @point = @{$points[$i]};
-                                                                    my $visible_count = get_empty_visibility($point[0], $point[1], @points);
-
-                                                                    if($i < 5) {
-                                                                        if($visible_count < 19) {
-                                                                            $good = 0;
-                                                                            last;
-                                                                        }
-                                                                    } else {
-                                                                        if($visible_count < $SECONDARY_BLACK_MIN) {
-                                                                            $good = 0;
-                                                                            last;
-                                                                        }
-                                                                    }
-                                                                }
-
-                                                                if($good) {
+                                                                if(check_points_visibility(@points)) {
                                                                     my @blacks;
                                                                     push(@blacks, $black5_row . "," . $black5_col);
                                                                     push(@blacks, $black6_row . "," . $black6_col);
