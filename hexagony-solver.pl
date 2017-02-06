@@ -18,6 +18,7 @@ my @RED_169 = (0, 6);
 my @RED_0_1 = (8, 6);
 my @RED_0_2 = (2, 8);
 my @RED_POINTS = (\@RED_169, \@RED_0_1, \@RED_0_2);
+my @GREEN_1 = (6, 8);
 
 my $PRIMARY_BLACK_MIN   = 19;
 my $SECONDARY_BLACK_MIN = 13;
@@ -277,6 +278,28 @@ sub check_rules($$$$$$) {
     return 1;
 }
 
+
+sub is_viable_black_19($$@) {
+    my ($black_row, $black_col, @points) = @_;
+
+    my @occupied_points;
+    push(@occupied_points, @points);
+    push(@occupied_points, @RED_POINTS);
+    if(is_occupied($black_row, $black_col, @occupied_points)) {
+        return 0;
+    }
+
+    # If not visible to green 130,321, then skip
+    my $green_point = $points[0]; # An array ref of (row, col) for the green 130,321
+    my @should_see = ($green_point);
+
+    # Can't be visible to Green 1 on board, or it wouldn't be a 1
+    my @shouldnt_see = (\@GREEN_1);
+
+    return check_rules($black_row, $black_col, $PRIMARY_BLACK_MIN, \@points, \@should_see, [\@GREEN_1]);
+}
+
+
 ### See the @points array below, which is in order of
 ### green 130321, black 19, black 19, black 19, black 19,
 ### blue 169, green 169, black 13, black 13
@@ -309,6 +332,13 @@ sub check_points_visibility(@) {
     return 1;
 }
 
+####
+#### Step 1: Find an arrangement of green 130321, and four black 19s.
+####         Store these in the %candidates hash, sorting the 19s so
+####         that we automatically remove permutations of the same 
+####         candidates spaces for the 19s
+####
+
 
 # Points array that expands/shrinks as we add and remove candidates
 my @points;
@@ -323,90 +353,40 @@ for(my $green_col = 1; $green_col <= 8; $green_col++) {
     for(my $black1_row = 0; $black1_row <= 8; $black1_row++) {
         for(my $black1_col = ceiling($black1_row); $black1_col <= 8; $black1_col++) {
 
-            # Early exit if this is an impossible spot for a black 19
-            if(get_empty_visibility($black1_row, $black1_col, @points) < 19) {
-                next;
-            } elsif ($black1_row == $green_row && $black1_col == $green_col) {
-                next;
-            } elsif (! is_visible_from($black1_row, $black1_col, $green_row, $green_col)) {
-                next;
-            } elsif (is_visible_from($black1_row, $black1_col, 6, 8)) {
-                # Cannot be visible from green 1
+            if(! is_viable_black_19($black1_row, $black1_col, @points)) {
                 next;
             }
             
             my @black1 = ($black1_row, $black1_col);
             push(@points, \@black1);
 
+            #### Try to place the third Black 19
             for(my $black2_row = 0; $black2_row <= 8; $black2_row++) {
                 for(my $black2_col = ceiling($black2_row); $black2_col <= 8; $black2_col++) {
 
-                    # Early exit if this is an impossible spot for a black 19
-                    if(get_empty_visibility($black2_row, $black2_col, @points) < 19) {
-                        next;
-                    } elsif ($black2_row == $green_row && $black2_col == $green_col) {
-                        next;
-                    } elsif (! is_visible_from($black2_row, $black2_col, $green_row, $green_col)) {
-                        next;
-                    } elsif (is_visible_from($black2_row, $black2_col, 6, 8)) {
-                        # Cannot be visible from green 1
-                        next;
-                    }
-
-                    # Skip to next row/col if collision
-                    if($black2_row == $black1_row && $black2_col == $black1_col) {
+                    if(! is_viable_black_19($black2_row, $black2_col, @points)) {
                         next;
                     }
 
                     my @black2 = ($black2_row, $black2_col);
                     push(@points, \@black2);
 
+                    #### Try to place the third Black 19
                     for(my $black3_row = 0; $black3_row <= 8; $black3_row++) {
                         for(my $black3_col = ceiling($black3_row); $black3_col <= 8; $black3_col++) {
 
-                            # Early exit if this is an impossible spot for a black 19
-                            if(get_empty_visibility($black3_row, $black3_col, @points) < 19) {
-                                next;
-                            } elsif ($black3_row == $green_row && $black3_col == $green_col) {
-                                next;
-                            }
-
-                            # Skip to next row/col if collision
-                            if($black3_row == $black1_row && $black3_col == $black1_col) {
-                                next;
-                            } elsif($black3_row == $black2_row && $black3_col == $black2_col) {
-                                next;
-                            } elsif (! is_visible_from($black3_row, $black3_col, $green_row, $green_col)) {
-                                next;
-                            } elsif (is_visible_from($black3_row, $black3_col, 6, 8)) {
-                                # Cannot be visible from green 1
+                            if(! is_viable_black_19($black3_row, $black3_col, @points)) {
                                 next;
                             }
 
                             my @black3 = ($black3_row, $black3_col);
                             push(@points, \@black3);
 
+                            #### Try to place the fourth Black 19
                             for(my $black4_row = 0; $black4_row <= 8; $black4_row++) {
                                 for(my $black4_col = ceiling($black4_row); $black4_col <= 8; $black4_col++) {
 
-                                    # Early exit if this is an impossible spot for a black 19
-                                    if(get_empty_visibility($black4_row, $black4_col, @points) < 19) {
-                                        next;
-                                    } elsif ($black4_row == $green_row && $black4_col == $green_col) {
-                                        next;
-                                    } elsif (! is_visible_from($black4_row, $black4_col, $green_row, $green_col)) {
-                                        next;
-                                    } elsif (is_visible_from($black4_row, $black4_col, 6, 8)) {
-                                        # Cannot be visible from green 1
-                                        next;
-                                    }
-
-                                    # Skip to next row/col if collision
-                                    if($black4_row == $black1_row && $black4_col == $black1_col) {
-                                        next;
-                                    } elsif($black4_row == $black2_row && $black4_col == $black2_col) {
-                                        next;
-                                    } elsif($black4_row == $black3_row && $black4_col == $black3_col) {
+                                    if(! is_viable_black_19($black4_row, $black4_col, @points)) {
                                         next;
                                     }
 
