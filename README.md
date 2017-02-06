@@ -19,8 +19,9 @@ The script makes a number of assumptions about the solution, which seemed reason
 1. Green 130,321
     * Is in the middle column
 2. Black 19s
-    * Can see at least 19 "empty" spaces (which we later assume are red)
+    * Can see at least 19 "empty" hexes (which we later assume are red after solving the puzzle)
     * Can see green 130,321
+    * Not visible to green 1
     * Are four of these
 3. Blue 169
     * Visible to red 169
